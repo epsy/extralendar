@@ -28,7 +28,7 @@ MailApp.getRemainingDailyQuota();
 SpreadsheetApp.flush();
 
 function main(){
-  var url = "https://raw.githubusercontent.com/nobe4/extralendar/"+((args.branch!="develop") ? "master" : "develop") +"/core.gs";
+  var url = "https://raw.githubusercontent.com/epsy/extralendar/"+((args.branch!="develop") ? "master" : "develop") +"/core.gs";
   var core_gs = UrlFetchApp.fetch(url);
   var core = new Function(core_gs);
   core();
