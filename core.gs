@@ -43,7 +43,11 @@ function coreFunction(){
   resetCalendar(cal, dateNow, dateNext);
 
   for(i in calendarInfo){
-    createEvent(cal,calendarInfo[i]);
+    try {
+        createEvent(cal,calendarInfo[i]);
+    } catch(e) {
+        log( 1, e );
+    }
   }
 
   doLogout();
