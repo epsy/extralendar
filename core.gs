@@ -131,13 +131,35 @@ function makeHttpRequest( url, options ){
 }
 
 function parseTitle(title){
-  var regexp = "(.*) - (.*) - (.*)";
-  var d = title.match(new RegExp(regexp));
-  return {
-    title : d[1],
-    teacher : d[2],
-    location : d[3]
+  var parts = title.split(" - ");
+  if(parts.length >= 3) {
+      return {
+          title: parts.slice(0, parts.length - 2).join(" - ").trim(' '),
+          teacher: parts[parts.length - 2].trim(' '),
+          location: parts[parts.length - 1].trim(' '),
+      };
   }
+  else if(parts.length == 2) {
+      var teacher = undefined;
+      var location = undefined;
+      if(parts[1].indexOf(',') !== -1) {
+          teacher = parts[1].trim(' ');
+      }
+      else
+      {
+          location = parts[1].trim(' ');
+      }
+      return {
+          title: parts[0].trim(' '),
+          teacher: teacher,
+          location: location,
+      };
+  }
+  return {
+      title: parts[0],
+      teacher: undefined,
+      location: undefined,
+  };
 }
 
 // -------------------------- Log Helpers ----------------------------
