@@ -82,7 +82,6 @@ function doLogin(){
     'method': 'POST',
     'headers': headers,
     'payload' : payload,
-    'followRedirects' : false
   };
 
   var response = makeHttpRequest(url, options);
