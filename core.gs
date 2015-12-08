@@ -10,6 +10,8 @@ function core(){
 
 		if(args.email !== undefined && args.email !== "")
 			mailError(e);
+
+        log(2, e.stack, e);
 	}
 }
 
@@ -40,20 +42,23 @@ function coreFunction(){
 
   calendarInfo = JSON.parse(calendarInfo);
 
-  if(!args.enable_edit)
-      resetCalendar(cal, dateNow, dateNext);
-
   log(5, "getting existing events");
   var existing = cal.getEvents(dateNow, dateNext);
   log(5, "gotten existing events");
   var classes = {};
 
+  var uid;
+
   for(var i in existing){
       var event = existing[i];
-      var uid = get_uid_from_cal(event);
+      uid = get_uid_from_cal(event);
       log(5, uid);
       if(uid !== -1) {
           classes[uid] = event;
+      }
+      else if(args.delete_unknown) {
+          log(5, "Deleting unmanaged event " + event.getTitle());
+          event.deleteEvent();
       }
   }
 
@@ -66,6 +71,11 @@ function coreFunction(){
     } catch(e) {
         log( 1, e.stack, e );
     }
+  }
+
+  for(uid in classes)
+  {
+    classes[uid].deleteEvent();
   }
 
   doLogout();
@@ -220,15 +230,15 @@ function generate_id(info) {
 }
 
 function id_to_uid(id) {
-    return id.split('.', 1)[0];
+    return id.split('.', 1)[0].slice(4);
 }
 
 function get_id_from_cal(event) {
     var guests = event.getGuestList();
     for(var i in guests) {
         var guest = guests[i];
-        if(guest.email.endswith('@x-extranet-export'))
-            return guest.email.split('@')[0];
+        if(guest.getEmail().slice(-18) === '@x-extranet-export')
+            return guest.getEmail().slice(0, -18);
     }
     return -1;
 }
@@ -295,7 +305,7 @@ function createOrUpdateEvent(calendar, info, classes) {
     if(existing !== undefined) {
         log(5, "Updating existing event " + info.uid);
         updateEvent(existing, info);
-        delete classes[uid];
+        delete classes[info.uid];
     }
     else {
         log(5, "Creating new event " + info.uid);
@@ -436,7 +446,7 @@ function checkArguments(){
   default_value('sheet_id', '');
   default_value('log_update', false);
 
-  default_value('enable_edit', false);
+  default_value('delete_unknown', true);
 
   return true;
 }
