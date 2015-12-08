@@ -64,7 +64,7 @@ function coreFunction(){
         var info = parseEvent(calendarInfo[i]);
         createOrUpdateEvent(cal, info, classes);
     } catch(e) {
-        log( 1, e );
+        log( 1, e.stack, e );
     }
   }
 
