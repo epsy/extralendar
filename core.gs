@@ -5,10 +5,10 @@ function core(){
 	try {
 		coreFunction();
 	} catch(e) {
-		if(args.sheet_id != undefined && args.sheet_id != "")
+		if(args.sheet_id !== undefined && args.sheet_id !== "")
 			sheetError(e);
 
-		if(args.email != undefined && args.email != "")
+		if(args.email !== undefined && args.email !== "")
 			mailError(e);
 	}
 }
@@ -20,7 +20,7 @@ function coreFunction(){
 
    var cal = CalendarApp.getCalendarById(args.calendar);
 
-  if( cal == null )
+  if( cal === null )
     throw error(10001, "Please specify a valid calendar");
 
   if( args.step <= 0 )
@@ -35,7 +35,7 @@ function coreFunction(){
 
   var calendarInfo = fetchExtranet(cookies, dateNow, dateNext);
 
-  if( calendarInfo == null )
+  if( calendarInfo === null )
     throw error(10003, "Something went wrong while fetching the calendar");
 
   calendarInfo = JSON.parse(calendarInfo);
@@ -57,7 +57,7 @@ function coreFunction(){
 function doLogin(){
   var base = makeHttpRequest(args.address,{});
 
-  if( base.getAllHeaders()['Set-Cookie'] == undefined || base.getAllHeaders()['Set-Cookie'].split("=")[0] != "ASP.NET_SessionId")
+  if( base.getAllHeaders()['Set-Cookie'] === undefined || base.getAllHeaders()['Set-Cookie'].split("=")[0] != "ASP.NET_SessionId")
     throw error(10004, "Impossible to fetch the ASP id, check the ADDRESS");
 
   var base_cookie = base.getAllHeaders()['Set-Cookie'].split(';')[0];
@@ -86,7 +86,7 @@ function doLogin(){
 
   var response = makeHttpRequest(url, options);
 
-  if( response.getAllHeaders()['Set-Cookie'] == undefined || response.getAllHeaders()['Set-Cookie'].split("=")[0] != "extranet_db")
+  if( response.getAllHeaders()['Set-Cookie'] === undefined || response.getAllHeaders()['Set-Cookie'].split("=")[0] != "extranet_db")
     throw error(10005, "Login error, please check your credentials");
 
   var returnValue = [ base_cookie, response.getAllHeaders()['Set-Cookie'].split(';')[0]];
@@ -106,7 +106,7 @@ function doLogout(){
 function fetchExtranet(cookies, dateNow, dateNext){
   var headers = {
     'Cookie' : cookies.join(';')
-  }
+  };
   var url = args.address+'/Student/Calendar/GetStudentEvents?start='+ formatDate( dateNow ) +'&end='+ formatDate( dateNext );
     
   var options = {
@@ -139,8 +139,8 @@ function parseTitle(title){
       };
   }
   else if(parts.length == 2) {
-      var teacher = undefined;
-      var location = undefined;
+      var teacher;
+      var location;
       if(parts[1].indexOf(',') !== -1) {
           teacher = parts[1].trim(' ');
       }
@@ -161,12 +161,72 @@ function parseTitle(title){
   };
 }
 
+function addComputedFields(info) {
+    info.title_field = info.title;
+    if(args.override_location) {
+        if(info.location !== undefined) {
+            info.title_field = info.location + ' - ' + info.title;
+        }
+        info.location = args.override_location;
+    }
+
+    var id = generate_id(info);
+    info.uid = id[0];
+    info.id = id;
+}
+
+function parseEvent(event) {
+    var info = parseTitle(event.title);
+    info.start_raw = event.start;
+    info.start = new Date(getDateFromIso(event.start));
+    info.end_raw = event.end;
+    info.end = new Date(getDateFromIso(event.end));
+
+    addComputedFields(info);
+
+    return info;
+}
+
+function toalphanum(s) {
+    return s.replace(/\W/g, '').toLowerCase();
+}
+
+function generate_id(info) {
+    title = toalphanum(info.title);
+    start = toalphanum(info.start_raw);
+    return [
+        title+start, title, start,
+        toalphanum(info.end_raw), toalphanum(info.teacher),
+        toalphanum(info.location)
+    ];
+}
+
+function id_to_uid(id) {
+    return id.split('.', 1)[0];
+}
+
+function get_id_from_cal(event) {
+    var guests = event.getGuestList();
+    for(var i in guests) {
+        var guest = guests[i];
+        if(guest.email.endswith('@x-extranet-export'))
+            return guest.email.split('@')[0];
+    }
+    return -1;
+}
+
+function get_uid_from_cal(event) {
+    var id = get_id_from_cal(event);
+    if(id === -1) return id;
+    return id_to_uid(id);
+}
+
 // -------------------------- Log Helpers ----------------------------
 
 // Basic log
 function log( level, message, header){
   if( level <= args.log_level ){
-    if( header != null ){
+    if( header !== undefined ){
       Logger.log( "-----> " + header );
     }
     Logger.log( message );
@@ -178,9 +238,9 @@ function logRequest( level, url, options){
   if( level <= args.log_level ){
     var result = UrlFetchApp.getRequest(url, options);
 
-    for(i in result) {
+    for(var i in result) {
       if(i == "headers"){
-        for(j in result[i]) {
+        for(var j in result[i]) {
           Logger.log(i+" -> "+j + ": " + result[i][j]);
         }
       }
@@ -194,10 +254,10 @@ function logRequest( level, url, options){
 
 function mailError(error){
   MailApp.sendEmail(args.email, "Error report Extralendar",
-                    "\r\nDate: " + new Date()
-                    + "\r\nNumber: " + error.number
-                    + "\r\nMessage: " + error.message
-                    + "\r\nLine: " + error.lineNumber);
+                    "\r\nDate: " + new Date() +
+                    "\r\nNumber: " + error.number +
+                    "\r\nMessage: " + error.message +
+                    "\r\nLine: " + error.lineNumber);
 }
 
 function sheetError(error){
@@ -315,25 +375,25 @@ function error(pNumber, pMessage){
 
 function checkArguments(){
   // Check required arguments
-  if( args.address == undefined || args.address == "" )
+  if( args.address === undefined || args.address === "" )
     return false;
 
-  if( args.username == undefined || args.username == "" )
+  if( args.username === undefined || args.username === "" )
     return false;
 
-  if( args.password == undefined || args.password == "" )
+  if( args.password === undefined || args.password === "" )
     return false;
 
-  if( args.calendar == undefined || args.calendar == "" )
+  if( args.calendar === undefined || args.calendar === "" )
     return false;
 
   // Set default values
-  args.log_level = ((args.log_level == undefined) ? 1 : args.log_level);
-  args.step = ((args.step == undefined || typeof args.step != "number") ? 14 : args.step);
-  args.anonymous_stats = ((args.anonymous_stats == undefined) ? false : args.anonymous_stats);
-  args.email = ((args.email == undefined) ? "" : args.email);
-  args.sheet_id = ((args.sheet_id == undefined) ? "" : args.sheet_id);
-  args.log_update = ((args.log_update == undefined) ? false : args.log_update);
+  args.log_level = ((args.log_level === undefined) ? 1 : args.log_level);
+  args.step = ((args.step === undefined || typeof args.step != "number") ? 14 : args.step);
+  args.anonymous_stats = ((args.anonymous_stats === undefined) ? false : args.anonymous_stats);
+  args.email = ((args.email === undefined) ? "" : args.email);
+  args.sheet_id = ((args.sheet_id === undefined) ? "" : args.sheet_id);
+  args.log_update = ((args.log_update === undefined) ? false : args.log_update);
 
   return true;
 }
