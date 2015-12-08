@@ -407,6 +407,12 @@ function error(pNumber, pMessage){
   return tempError;
 }
 
+
+function default_value(arg_name, default_) {
+    // sets args[arg_name] to default_ if left undefined by the user
+    args[arg_name] = args[arg_name] === undefined ? default_ : args[arg_name];
+}
+
 function checkArguments(){
   // Check required arguments
   if( args.address === undefined || args.address === "" )
@@ -422,14 +428,15 @@ function checkArguments(){
     return false;
 
   // Set default values
-  args.log_level = ((args.log_level === undefined) ? 1 : args.log_level);
-  args.step = ((args.step === undefined || typeof args.step != "number") ? 14 : args.step);
-  args.anonymous_stats = ((args.anonymous_stats === undefined) ? false : args.anonymous_stats);
-  args.email = ((args.email === undefined) ? "" : args.email);
-  args.sheet_id = ((args.sheet_id === undefined) ? "" : args.sheet_id);
-  args.log_update = ((args.log_update === undefined) ? false : args.log_update);
+  default_value('log_level', 1);
+  default_value('step', 14);
+  default_value('anonymous_stats', false);
 
-  args.enable_edit = (args.enable_edit === undefined)? false : args.enable_edit;
+  default_value('email', '');
+  default_value('sheet_id', '');
+  default_value('log_update', false);
+
+  default_value('enable_edit', false);
 
   return true;
 }
