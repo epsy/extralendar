@@ -40,11 +40,29 @@ function coreFunction(){
 
   calendarInfo = JSON.parse(calendarInfo);
 
-  resetCalendar(cal, dateNow, dateNext);
+  if(!args.enable_edit)
+      resetCalendar(cal, dateNow, dateNext);
+
+  log(5, "getting existing events");
+  var existing = cal.getEvents(dateNow, dateNext);
+  log(5, "gotten existing events");
+  var classes = {};
+
+  for(var i in existing){
+      var event = existing[i];
+      var uid = get_uid_from_cal(event);
+      log(5, uid);
+      if(uid !== -1) {
+          classes[uid] = event;
+      }
+  }
+
+  log(5, "classified existing events", existing);
 
   for(i in calendarInfo){
     try {
-        createEvent(cal,calendarInfo[i]);
+        var info = parseEvent(calendarInfo[i]);
+        createOrUpdateEvent(cal, info, classes);
     } catch(e) {
         log( 1, e );
     }
@@ -272,31 +290,47 @@ function sheetError(error){
 
 // -------------------------- Google Calendar helpers ----------------------------
 
-// Create Event
-function createEvent(calendar, event) {
-  var info = parseTitle(event.title);
+function createOrUpdateEvent(calendar, info, classes) {
+    var existing = classes[info.uid];
+    if(existing !== undefined) {
+        log(5, "Updating existing event " + info.uid);
+        updateEvent(existing, info);
+        delete classes[uid];
+    }
+    else {
+        log(5, "Creating new event " + info.uid);
+        createEvent(calendar, info);
+    }
+}
 
-  var title = info.title;
-  var start = new Date(getDateFromIso(event.start));
-  var end = new Date(getDateFromIso(event.end));
+// Create Event
+function createEvent(calendar, info) {
   var desc = info.teacher;
-  var loc = info.location;
 
   if(args.log_update){
     desc += "\n\nUpdated at :\n" + new Date();
   }
 
-  if(args.override_location)
-  {
-    if(loc !== undefined) title = loc + ' - ' + title;
-    loc = args.override_location;
-  }
-
-  var event = calendar.createEvent(title, start, end, {
-    description : desc,
-    location : loc
+  var event = calendar.createEvent(info.title_field, info.start, info.end, {
+    description: desc,
+    location: info.location,
+    guests: 'uid+' + info.id.join('.') + '@x-extranet-export'
   });
-};
+}
+
+function updateEvent(event, info) {
+    var id = get_id_from_cal(event).split('.');
+
+    if(id[1] !== info.id[1] || args.override_location && id[5] !== info.id[5])
+        event.setTitle(info.title_field);
+    if(id[2] !== info.id[2] || id[3] !== info.id[3])
+        event.setTime(info.start, info.end);
+    if(id[4] !== info.id[4])
+        event.setDescription(info.teacher);
+    if(!args.override_location && id[5] !== info.id[5])
+        event.setLocation(indo.location);
+}
+
 
 // reset the calendar between the two dates
 function resetCalendar(calendar,date1, date2){
@@ -394,6 +428,8 @@ function checkArguments(){
   args.email = ((args.email === undefined) ? "" : args.email);
   args.sheet_id = ((args.sheet_id === undefined) ? "" : args.sheet_id);
   args.log_update = ((args.log_update === undefined) ? false : args.log_update);
+
+  args.enable_edit = (args.enable_edit === undefined)? false : args.enable_edit;
 
   return true;
 }
