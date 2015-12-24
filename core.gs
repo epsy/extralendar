@@ -203,6 +203,10 @@ function addComputedFields(info) {
     info.id = id;
 }
 
+function id_to_cookie(id) {
+    return 'uid+' + info.id.join('.') + '@x-extranet-export';
+}
+
 function parseEvent(event) {
     var info = parseTitle(event.title);
     info.start_raw = event.start;
@@ -234,11 +238,17 @@ function id_to_uid(id) {
 }
 
 function get_id_from_cal(event) {
+    var guest = get_guest_cookie_from_cal(event);
+    if(guest === -1) return -1;
+      return guest.getEmail().slice(0, -18);
+}
+
+function get_guest_cookie_from_cal(event) {
     var guests = event.getGuestList();
     for(var i in guests) {
         var guest = guests[i];
         if(guest.getEmail().slice(-18) === '@x-extranet-export')
-            return guest.getEmail().slice(0, -18);
+            return guest;
     }
     return -1;
 }
@@ -304,8 +314,12 @@ function createOrUpdateEvent(calendar, info, classes) {
     var existing = classes[info.uid];
     if(existing !== undefined) {
         log(5, "Updating existing event " + info.uid);
-        updateEvent(existing, info);
-        delete classes[info.uid];
+        try {
+          updateEvent(existing, info);
+        }
+        finally {
+          delete classes[info.uid];
+        }
     }
     else {
         log(5, "Creating new event " + info.uid);
@@ -324,21 +338,41 @@ function createEvent(calendar, info) {
   var event = calendar.createEvent(info.title_field, info.start, info.end, {
     description: desc,
     location: info.location,
-    guests: 'uid+' + info.id.join('.') + '@x-extranet-export'
+    guests: id_to_cookie(info.id)
   });
 }
 
 function updateEvent(event, info) {
-    var id = get_id_from_cal(event).split('.');
+    var guest = get_guest_cookie_from_cal(event);
+    var id = guest.getEmail().slice(0, -18);
+
+    var changed = false;
 
     if(id[1] !== info.id[1] || args.override_location && id[5] !== info.id[5])
+    {
         event.setTitle(info.title_field);
+        changed = true;
+    }
     if(id[2] !== info.id[2] || id[3] !== info.id[3])
+    {
         event.setTime(info.start, info.end);
+        changed = true;
+    }
     if(id[4] !== info.id[4])
+    {
         event.setDescription(info.teacher);
+        changed = true;
+    }
     if(!args.override_location && id[5] !== info.id[5])
+    {
         event.setLocation(indo.location);
+        changed = true;
+    }
+
+    if(changed) {
+        event.removeGuest(guest.getEmail());
+        event.addGuest(id_to_cookie(info.id));
+    }
 }
 
 
