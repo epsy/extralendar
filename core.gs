@@ -386,8 +386,11 @@ function updateEvent(event, info) {
     }
 
     if(changed) {
+        log(5, info.uid, "Updated existing event");
         event.removeGuest(guest.getEmail());
         event.addGuest(id_to_cookie(info.id));
+    } else {
+        log(5, info.uid, "No changes to existing event");
     }
 }
 
