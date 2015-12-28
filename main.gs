@@ -3,7 +3,7 @@
 //  Google Apps Script for the automatic export of compatible extranet websites
 //  to a Google calendar.
 //
-//  To install, simply follow the instructions within.
+//  To install, simply follow the 4-part instructions below.
 //
 //  Use GitHub for help/bugs/ideas:
 //      https://github.com/epsy/extralendar/issues
