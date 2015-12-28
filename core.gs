@@ -198,9 +198,9 @@ function addComputedFields(info) {
                 info.title_field = info.location + ' - ' + info.title;
             } else {
                 info.title_field = '\u2026 - ' + info.title;
+                info.description_field = info.location + '\n\n' +
+                                         info.description_field;
             }
-            info.description_field = info.location + '\n\n' +
-                                     info.description_field;
         }
         info.location = args.override_location;
     }
