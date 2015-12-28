@@ -237,7 +237,7 @@ function generate_id(info) {
     title = toalphanum(info.title);
     start = toalphanum(info.start_raw);
     return [
-        title+start, title, start,
+        title+start+args.invalidator, title, start,
         toalphanum(info.end_raw), toalphanum(info.teacher),
         toalphanum(info.location)
     ];
@@ -498,6 +498,7 @@ function checkArguments(){
 
   default_value('delete_unknown', true);
   default_value('magic_line', "\n\n----------------------\n");
+  default_value('invalidator', "");
 
   default_value('override_location', "");
   default_value('location_max_length', 15);
