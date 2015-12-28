@@ -204,6 +204,9 @@ function addComputedFields(info) {
         }
         info.location = args.override_location;
     }
+    if(args.log_update) {
+        info.description_field += "\n\nUpdated at :\n" + new Date();
+    }
 
     var id = generate_id(info);
     info.uid = id[0];
@@ -336,17 +339,20 @@ function createOrUpdateEvent(calendar, info, classes) {
 
 // Create Event
 function createEvent(calendar, info) {
-  var desc = info.description_field;
-
-  if(args.log_update){
-    desc += "\n\nCreated at :\n" + new Date();
-  }
+  var desc = info.description_field + args.magic_line +
+     "Write comments below the line. Anything above the line will be overwritten.\n\n";
 
   var event = calendar.createEvent(info.title_field, info.start, info.end, {
     description: desc,
     location: info.location,
     guests: id_to_cookie(info.id)
   });
+}
+
+function updateDescription(event, info) {
+    var oldDesc = event.getDescription().split(args.magic_line);
+    oldDesc[0] = info.description_field;
+    event.setDescription(oldDesc.join(args.magic_line));
 }
 
 function updateEvent(event, info) {
@@ -366,10 +372,12 @@ function updateEvent(event, info) {
         changed = true;
     }
     if(id[4] !== info.id[4] ||
-       args.args.override_location && id[5] !== info.id[5])
+       args.override_location && id[5] !== info.id[5])
     {
-        event.setDescription(info.description_field);
+        updateDescription(event, info);
         changed = true;
+    } else if(args.log_update) {
+        updateDescription(event, info);
     }
     if(!args.override_location && id[5] !== info.id[5])
     {
@@ -489,6 +497,7 @@ function checkArguments(){
   default_value('log_update', false);
 
   default_value('delete_unknown', true);
+  default_value('magic_line', "\n\n----------------------\n");
 
   default_value('override_location', "");
   default_value('location_max_length', 15);
