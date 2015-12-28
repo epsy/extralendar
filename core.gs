@@ -477,7 +477,7 @@ function checkArguments(){
 
   // Set default values
   default_value('log_level', 1);
-  default_value('step', 14);
+  default_value('step', 90);
   default_value('anonymous_stats', false);
 
   default_value('email', '');
