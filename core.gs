@@ -5,11 +5,13 @@ function core(){
 	try {
 		coreFunction();
 	} catch(e) {
-		if(args.sheet_id != undefined && args.sheet_id != "")
+		if(args.sheet_id !== undefined && args.sheet_id !== "")
 			sheetError(e);
 
-		if(args.email != undefined && args.email != "")
+		if(args.email !== undefined && args.email !== "")
 			mailError(e);
+
+        log(2, e.stack, e);
 	}
 }
 
@@ -20,34 +22,66 @@ function coreFunction(){
 
    var cal = CalendarApp.getCalendarById(args.calendar);
 
-  if( cal == null )
+  if( cal === null )
     throw error(10001, "Please specify a valid calendar");
 
   if( args.step <= 0 )
     throw error(10002, "The step must be greater than zero");
 
-  var dateNow = roundDate(  dateAddDay( new Date(), -1 ) );
-  log(2, dateNow);
-  var dateNext = roundDate( dateAddDay( new Date(), args.step ) );
-  log(2, dateNext);
+  var dateNow = new Date();
+  dateNow.setHours(0);
+  dateNow.setMinutes(0);
+  dateNow.setSeconds(0);
+  var dateNext = new Date();
+  dateNext.setDate(dateNext.getDate() + args.step);
+  dateNext.setHours(23);
+  dateNext.setMinutes(59);
+  dateNext.setSeconds(59);
+  log(2, "Fetchings events from " + dateNow + " to " + dateNext);
 
   var cookies = doLogin();
 
   var calendarInfo = fetchExtranet(cookies, dateNow, dateNext);
 
-  if( calendarInfo == null )
+  if( calendarInfo === null )
     throw error(10003, "Something went wrong while fetching the calendar");
 
   calendarInfo = JSON.parse(calendarInfo);
 
-  resetCalendar(cal, dateNow, dateNext);
+  log(5, "getting existing events");
+  var existing = cal.getEvents(dateNow, dateNext);
+  log(5, "gotten existing events");
+  var classes = {};
+
+  var uid;
+
+  for(var i in existing){
+      var event = existing[i];
+      uid = get_uid_from_cal(event);
+      log(5, uid);
+      if(uid !== -1) {
+          classes[uid] = event;
+      }
+      else if(args.delete_unknown) {
+          log(5, "Deleting unmanaged event " + event.getTitle());
+          event.deleteEvent();
+      }
+  }
+
+  log(5, "classified existing events", existing);
 
   for(i in calendarInfo){
     try {
-        createEvent(cal,calendarInfo[i]);
+        var info = parseEvent(calendarInfo[i]);
+        createOrUpdateEvent(cal, info, classes);
     } catch(e) {
-        log( 1, e );
+        log( 1, e.stack, e );
     }
+  }
+
+  for(uid in classes)
+  {
+    classes[uid].deleteEvent();
   }
 
   doLogout();
@@ -57,7 +91,7 @@ function coreFunction(){
 function doLogin(){
   var base = makeHttpRequest(args.address,{});
 
-  if( base.getAllHeaders()['Set-Cookie'] == undefined || base.getAllHeaders()['Set-Cookie'].split("=")[0] != "ASP.NET_SessionId")
+  if( base.getAllHeaders()['Set-Cookie'] === undefined || base.getAllHeaders()['Set-Cookie'].split("=")[0] != "ASP.NET_SessionId")
     throw error(10004, "Impossible to fetch the ASP id, check the ADDRESS");
 
   var base_cookie = base.getAllHeaders()['Set-Cookie'].split(';')[0];
@@ -86,7 +120,7 @@ function doLogin(){
 
   var response = makeHttpRequest(url, options);
 
-  if( response.getAllHeaders()['Set-Cookie'] == undefined || response.getAllHeaders()['Set-Cookie'].split("=")[0] != "extranet_db")
+  if( response.getAllHeaders()['Set-Cookie'] === undefined || response.getAllHeaders()['Set-Cookie'].split("=")[0] != "extranet_db")
     throw error(10005, "Login error, please check your credentials");
 
   var returnValue = [ base_cookie, response.getAllHeaders()['Set-Cookie'].split(';')[0]];
@@ -106,7 +140,7 @@ function doLogout(){
 function fetchExtranet(cookies, dateNow, dateNext){
   var headers = {
     'Cookie' : cookies.join(';')
-  }
+  };
   var url = args.address+'/Student/Calendar/GetStudentEvents?start='+ formatDate( dateNow ) +'&end='+ formatDate( dateNext );
     
   var options = {
@@ -139,8 +173,8 @@ function parseTitle(title){
       };
   }
   else if(parts.length == 2) {
-      var teacher = undefined;
-      var location = undefined;
+      var teacher;
+      var location;
       if(parts[1].indexOf(',') !== -1) {
           teacher = parts[1].trim(' ');
       }
@@ -161,12 +195,92 @@ function parseTitle(title){
   };
 }
 
+function addComputedFields(info) {
+    info.description_field = info.teacher;
+    info.title_field = info.title;
+    if(args.override_location) {
+        if(info.location !== undefined) {
+            if(info.location.length < args.location_max_length) {
+                info.title_field = info.location + ' - ' + info.title;
+            } else {
+                info.title_field = '\u2026 - ' + info.title;
+                info.description_field = info.location + '\n\n' +
+                                         info.description_field;
+            }
+        }
+        info.location = args.override_location;
+    }
+    if(args.log_update) {
+        info.description_field += "\n\nUpdated at :\n" + new Date();
+    }
+
+    var id = generate_id(info);
+    info.uid = id[0];
+    info.id = id;
+}
+
+function id_to_cookie(id) {
+    return 'uid+' + id.join('.') + '@x-extranet-export';
+}
+
+function parseEvent(event) {
+    var info = parseTitle(event.title);
+    info.start_raw = event.start;
+    info.start = new Date(getDateFromIso(event.start));
+    info.end_raw = event.end;
+    info.end = new Date(getDateFromIso(event.end));
+
+    addComputedFields(info);
+
+    return info;
+}
+
+function toalphanum(s) {
+    return s.replace(/\W/g, '').toLowerCase();
+}
+
+function generate_id(info) {
+    title = toalphanum(info.title);
+    start = toalphanum(info.start_raw);
+    return [
+        title+start+args.invalidator, title, start,
+        toalphanum(info.end_raw), toalphanum(info.teacher),
+        toalphanum(info.location)
+    ];
+}
+
+function id_to_uid(id) {
+    return id.split('.', 1)[0].slice(4);
+}
+
+function get_id_from_cal(event) {
+    var guest = get_guest_cookie_from_cal(event);
+    if(guest === -1) return -1;
+      return guest.getEmail().slice(0, -18);
+}
+
+function get_guest_cookie_from_cal(event) {
+    var guests = event.getGuestList();
+    for(var i in guests) {
+        var guest = guests[i];
+        if(guest.getEmail().slice(-18) === '@x-extranet-export')
+            return guest;
+    }
+    return -1;
+}
+
+function get_uid_from_cal(event) {
+    var id = get_id_from_cal(event);
+    if(id === -1) return id;
+    return id_to_uid(id);
+}
+
 // -------------------------- Log Helpers ----------------------------
 
 // Basic log
 function log( level, message, header){
   if( level <= args.log_level ){
-    if( header != null ){
+    if( header !== undefined ){
       Logger.log( "-----> " + header );
     }
     Logger.log( message );
@@ -178,9 +292,9 @@ function logRequest( level, url, options){
   if( level <= args.log_level ){
     var result = UrlFetchApp.getRequest(url, options);
 
-    for(i in result) {
+    for(var i in result) {
       if(i == "headers"){
-        for(j in result[i]) {
+        for(var j in result[i]) {
           Logger.log(i+" -> "+j + ": " + result[i][j]);
         }
       }
@@ -194,10 +308,10 @@ function logRequest( level, url, options){
 
 function mailError(error){
   MailApp.sendEmail(args.email, "Error report Extralendar",
-                    "\r\nDate: " + new Date()
-                    + "\r\nNumber: " + error.number
-                    + "\r\nMessage: " + error.message
-                    + "\r\nLine: " + error.lineNumber);
+                    "\r\nDate: " + new Date() +
+                    "\r\nNumber: " + error.number +
+                    "\r\nMessage: " + error.message +
+                    "\r\nLine: " + error.lineNumber);
 }
 
 function sheetError(error){
@@ -212,31 +326,80 @@ function sheetError(error){
 
 // -------------------------- Google Calendar helpers ----------------------------
 
+function createOrUpdateEvent(calendar, info, classes) {
+    var existing = classes[info.uid];
+    if(existing !== undefined) {
+        log(5, "Updating existing event " + info.uid);
+        try {
+          updateEvent(existing, info);
+        }
+        finally {
+          delete classes[info.uid];
+        }
+    }
+    else {
+        log(5, "Creating new event " + info.uid);
+        createEvent(calendar, info);
+    }
+}
+
 // Create Event
-function createEvent(calendar, event) {
-  var info = parseTitle(event.title);
+function createEvent(calendar, info) {
+  var desc = info.description_field + args.magic_line +
+     "Write comments below the line. Anything above the line will be overwritten.\n\n";
 
-  var title = info.title;
-  var start = new Date(getDateFromIso(event.start));
-  var end = new Date(getDateFromIso(event.end));
-  var desc = info.teacher;
-  var loc = info.location;
-
-  if(args.log_update){
-    desc += "\n\nUpdated at :\n" + new Date();
-  }
-
-  if(args.override_location)
-  {
-    if(loc !== undefined) title = loc + ' - ' + title;
-    loc = args.override_location;
-  }
-
-  var event = calendar.createEvent(title, start, end, {
-    description : desc,
-    location : loc
+  var event = calendar.createEvent(info.title_field, info.start, info.end, {
+    description: desc,
+    location: info.location,
+    guests: id_to_cookie(info.id)
   });
-};
+}
+
+function updateDescription(event, info) {
+    var oldDesc = event.getDescription().split(args.magic_line);
+    oldDesc[0] = info.description_field;
+    event.setDescription(oldDesc.join(args.magic_line));
+}
+
+function updateEvent(event, info) {
+    var guest = get_guest_cookie_from_cal(event);
+    var id = guest.getEmail().slice(0, -18);
+
+    var changed = false;
+
+    if(id[1] !== info.id[1] || args.override_location && id[5] !== info.id[5])
+    {
+        event.setTitle(info.title_field);
+        changed = true;
+    }
+    if(id[2] !== info.id[2] || id[3] !== info.id[3])
+    {
+        event.setTime(info.start, info.end);
+        changed = true;
+    }
+    if(id[4] !== info.id[4] ||
+       args.override_location && id[5] !== info.id[5])
+    {
+        updateDescription(event, info);
+        changed = true;
+    } else if(args.log_update) {
+        updateDescription(event, info);
+    }
+    if(!args.override_location && id[5] !== info.id[5])
+    {
+        event.setLocation(indo.location);
+        changed = true;
+    }
+
+    if(changed) {
+        log(5, info.uid, "Updated existing event");
+        event.removeGuest(guest.getEmail());
+        event.addGuest(id_to_cookie(info.id));
+    } else {
+        log(5, info.uid, "No changes to existing event");
+    }
+}
+
 
 // reset the calendar between the two dates
 function resetCalendar(calendar,date1, date2){
@@ -248,30 +411,9 @@ function resetCalendar(calendar,date1, date2){
 
 // -------------------------- Date helpers ----------------------------
 
-// Round the current date to 00:00
-function roundDate( pDate ){
-  pDate.setHours(04);
-  pDate.setMinutes(0);
-  pDate.setSeconds(0);
-
-  return pDate;
-}
-
-// Format the date : yyyy-mm-dd
+// Format the date for the extranet website: yyyy-mm-dd
 function formatDate(pDate){
   return pDate.getFullYear() + '-' + (pDate.getMonth()+1) + '-' + pDate.getDate();
-}
-
-// Add the given number of days to the date
-function dateAddDay( pDate, pDay ){
-  pDate.setDate( pDate.getDate() + pDay );
-
-  return pDate;
-}
-
-// Generate timestamp in the unix format
-function generateTimestamp( pDate ){
-  return pDate.getTime() / 1000 ;
 }
 
 // http://stackoverflow.com/questions/11810441/how-do-i-format-this-date-string-so-that-google-scripts-recognizes-it
@@ -313,28 +455,41 @@ function error(pNumber, pMessage){
   return tempError;
 }
 
+
+function default_value(arg_name, default_) {
+    // sets args[arg_name] to default_ if left undefined by the user
+    args[arg_name] = args[arg_name] === undefined ? default_ : args[arg_name];
+}
+
 function checkArguments(){
   // Check required arguments
-  if( args.address == undefined || args.address == "" )
+  if( args.address === undefined || args.address === "" )
     return false;
 
-  if( args.username == undefined || args.username == "" )
+  if( args.username === undefined || args.username === "" )
     return false;
 
-  if( args.password == undefined || args.password == "" )
+  if( args.password === undefined || args.password === "" )
     return false;
 
-  if( args.calendar == undefined || args.calendar == "" )
+  if( args.calendar === undefined || args.calendar === "" )
     return false;
 
   // Set default values
-  args.log_level = ((args.log_level == undefined) ? 1 : args.log_level);
-  args.step = ((args.step == undefined || typeof args.step != "number") ? 14 : args.step);
-  args.anonymous_stats = ((args.anonymous_stats == undefined) ? false : args.anonymous_stats);
-  args.email = ((args.email == undefined) ? "" : args.email);
-  args.sheet_id = ((args.sheet_id == undefined) ? "" : args.sheet_id);
-  args.log_update = ((args.log_update == undefined) ? false : args.log_update);
+  default_value('log_level', 1);
+  default_value('step', 90);
+  default_value('anonymous_stats', false);
 
+  default_value('email', '');
+  default_value('sheet_id', '');
+  default_value('log_update', false);
+
+  default_value('delete_unknown', true);
+  default_value('magic_line', "\n\n----------------------\n");
+  default_value('invalidator', "");
+
+  default_value('override_location', "");
+  default_value('location_max_length', 15);
   return true;
 }
 
