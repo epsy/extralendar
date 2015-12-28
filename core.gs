@@ -204,7 +204,7 @@ function addComputedFields(info) {
 }
 
 function id_to_cookie(id) {
-    return 'uid+' + info.id.join('.') + '@x-extranet-export';
+    return 'uid+' + id.join('.') + '@x-extranet-export';
 }
 
 function parseEvent(event) {
