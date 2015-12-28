@@ -52,10 +52,7 @@ var args = {
 // 4. The password used for this website.
     password: "",
 
-// 5. (Optional) How many days ahead should be synchornized?
-    step: 14,
-
-// 6. (Optional) If the setting below is empty, the room number in each event
+// 5. (Optional) If the setting below is empty, the room number in each event
 //    will be assigned in the "Location" field of the event in your calendar.
 //    If you prefer to have something else in that field (for instance a real
 //    location, so that your phone may remind you when you should leave to
