@@ -28,10 +28,16 @@ function coreFunction(){
   if( args.step <= 0 )
     throw error(10002, "The step must be greater than zero");
 
-  var dateNow = roundDate(  dateAddDay( new Date(), -1 ) );
-  log(2, dateNow);
-  var dateNext = roundDate( dateAddDay( new Date(), args.step ) );
-  log(2, dateNext);
+  var dateNow = new Date();
+  dateNow.setHours(0);
+  dateNow.setMinutes(0);
+  dateNow.setSeconds(0);
+  var dateNext = new Date();
+  dateNext.setDate(dateNext.getDate() + args.step);
+  dateNext.setHours(23);
+  dateNext.setMinutes(59);
+  dateNext.setSeconds(59);
+  log(2, "Fetchings events from " + dateNow + " to " + dateNext);
 
   var cookies = doLogin();
 
@@ -405,30 +411,9 @@ function resetCalendar(calendar,date1, date2){
 
 // -------------------------- Date helpers ----------------------------
 
-// Round the current date to 00:00
-function roundDate( pDate ){
-  pDate.setHours(04);
-  pDate.setMinutes(0);
-  pDate.setSeconds(0);
-
-  return pDate;
-}
-
-// Format the date : yyyy-mm-dd
+// Format the date for the extranet website: yyyy-mm-dd
 function formatDate(pDate){
   return pDate.getFullYear() + '-' + (pDate.getMonth()+1) + '-' + pDate.getDate();
-}
-
-// Add the given number of days to the date
-function dateAddDay( pDate, pDay ){
-  pDate.setDate( pDate.getDate() + pDay );
-
-  return pDate;
-}
-
-// Generate timestamp in the unix format
-function generateTimestamp( pDate ){
-  return pDate.getTime() / 1000 ;
 }
 
 // http://stackoverflow.com/questions/11810441/how-do-i-format-this-date-string-so-that-google-scripts-recognizes-it
