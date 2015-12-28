@@ -190,10 +190,17 @@ function parseTitle(title){
 }
 
 function addComputedFields(info) {
+    info.description_field = info.teacher;
     info.title_field = info.title;
     if(args.override_location) {
         if(info.location !== undefined) {
-            info.title_field = info.location + ' - ' + info.title;
+            if(info.location.length < args.location_max_length) {
+                info.title_field = info.location + ' - ' + info.title;
+            } else {
+                info.title_field = '\u2026 - ' + info.title;
+            }
+            info.description_field = info.location + '\n\n' +
+                                     info.description_field;
         }
         info.location = args.override_location;
     }
@@ -329,10 +336,10 @@ function createOrUpdateEvent(calendar, info, classes) {
 
 // Create Event
 function createEvent(calendar, info) {
-  var desc = info.teacher;
+  var desc = info.description_field;
 
   if(args.log_update){
-    desc += "\n\nUpdated at :\n" + new Date();
+    desc += "\n\nCreated at :\n" + new Date();
   }
 
   var event = calendar.createEvent(info.title_field, info.start, info.end, {
@@ -358,9 +365,10 @@ function updateEvent(event, info) {
         event.setTime(info.start, info.end);
         changed = true;
     }
-    if(id[4] !== info.id[4])
+    if(id[4] !== info.id[4] ||
+       args.args.override_location && id[5] !== info.id[5])
     {
-        event.setDescription(info.teacher);
+        event.setDescription(info.description_field);
         changed = true;
     }
     if(!args.override_location && id[5] !== info.id[5])
@@ -482,6 +490,8 @@ function checkArguments(){
 
   default_value('delete_unknown', true);
 
+  default_value('override_location', "");
+  default_value('location_max_length', 15);
   return true;
 }
 
