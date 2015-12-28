@@ -1,26 +1,18 @@
-extralendar
-===========
+# extralendar
 
-## Why ?
+Google Apps Script for the automatic export of compatible extranet websites to
+a Google calendar. No need to log in to the extranet website, just pop open
+your phone's calendar app!
 
-Never log again to your extranet to see your calendar.
-
-## How ?
-
-Google calendars that auto-update itelf, wouldn't it be cool ?
-
-## What ?
-
-Extralendar is a google app script for automatic export of the extranet calendar to google calendar.
-
-## Help !
-
-See the [wiki](https://github.com/nobe4/extralendar/wiki)
-
-Go to the [FAQ](https://github.com/nobe4/extralendar/wiki/FAQ)
+See the [main.gs](main.gs) file for setup instructions.
 
 
-# Disclaimer
-> This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY expressed or implied. **Use it at your own risk**.
+## Disclaimer
 
-> You can only use this program with valid credentials.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
