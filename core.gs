@@ -358,15 +358,15 @@ function createOrUpdateEvent(calendar, info, classes) {
     var existing = classes[info.uid];
     if(info.deleteMe === true) {
         if(existing !== undefined) {
-            log(5, "Deleting removed event " + info.uid);
+            log(5, info.uid, "Deleting removed event");
             existing.deleteEvent();
         }
     } else if(existing !== undefined) {
-        log(5, "Updating existing event " + info.uid);
+        log(5, info.uid, "Updating existing event");
         updateEvent(existing, info);
     }
     else {
-        log(5, "Creating new event " + info.uid);
+        log(5, info.uid, "Creating new event");
         createEvent(calendar, info);
     }
 }
@@ -441,7 +441,7 @@ function updateEvent(event, info) {
         event.removeGuest(guest.getEmail());
         event.addGuest(cookie);
     } else {
-        log(5, info.uid, "No changes to existing event");
+        log(5, "No changes");
     }
 }
 
