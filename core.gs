@@ -17,6 +17,7 @@ function core(){
 
 // -------------------------- Main ----------------------------
 function coreFunction(){
+  log(2, "Script started at " + new Date());
   if( !checkArguments() )
     throw error(10000, "One or more of the arguments is empty");
 
