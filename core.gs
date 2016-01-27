@@ -58,7 +58,6 @@ function coreFunction(){
   for(var i in existing){
       var event = existing[i];
       uid = get_uid_from_cal(event);
-      log(5, uid);
       if(uid !== -1) {
           classes[uid] = event;
       }
@@ -68,20 +67,33 @@ function coreFunction(){
       }
   }
 
-  log(5, "classified existing events", existing);
+  var new_events = [];
+  var noLongerUsed = clone(existing);
 
   for(i in calendarInfo){
     try {
         var info = parseEvent(calendarInfo[i]);
-        createOrUpdateEvent(cal, info, classes);
+        new_events.push(info);
+        delete noLongerUsed[info.uid];
     } catch(e) {
         log( 1, e.stack, e );
     }
   }
 
-  for(uid in classes)
-  {
-    classes[uid].deleteEvent();
+  for(i in noLongerUsed) {
+      new_events.push({
+        deleteMe: true,
+        uid: i,
+        start: noLongerUsed[i].getStartTime()
+      });
+  }
+
+  new_events.sort(function(a, b) {
+    return a.start - b.start;
+  });
+
+  for(i in new_events){
+    createOrUpdateEvent(cal, new_events[i], classes);
   }
 
   doLogout();
@@ -328,14 +340,14 @@ function sheetError(error){
 
 function createOrUpdateEvent(calendar, info, classes) {
     var existing = classes[info.uid];
-    if(existing !== undefined) {
+    if(info.deleteMe === true) {
+        if(existing !== undefined) {
+            log(5, "Deleting removed event " + info.uid);
+            existing.deleteEvent();
+        }
+    } else if(existing !== undefined) {
         log(5, "Updating existing event " + info.uid);
-        try {
-          updateEvent(existing, info);
-        }
-        finally {
-          delete classes[info.uid];
-        }
+        updateEvent(existing, info);
     }
     else {
         log(5, "Creating new event " + info.uid);
@@ -366,35 +378,52 @@ function updateEvent(event, info) {
     var id = guest.getEmail().slice(0, -18);
 
     var changed = false;
+    var descChanged = false;
 
     if(id[1] !== info.id[1] || args.override_location && id[5] !== info.id[5])
     {
+        log(5, id[1]+"!=="+info.id[1]+" || "+id[5]+"!=="+ info.id[5] +
+            "\nNew value: " + info.title_field, "Title changed");
         event.setTitle(info.title_field);
         changed = true;
     }
     if(id[2] !== info.id[2] || id[3] !== info.id[3])
     {
+        log(5, id[2]+"!=="+info.id[2]+" || "+id[3]+" !== "+info.id[3] +
+            "\nNew value: " + info.start + " to " + info.end, "Time changed");
         event.setTime(info.start, info.end);
         changed = true;
     }
     if(id[4] !== info.id[4] ||
        args.override_location && id[5] !== info.id[5])
     {
+        log(5, id[4]+"!=="+info.id[4]+" || "+id[5]+" !== "+info.id[5] +
+            "\nNew value: " + info.description_field, "Description changed");
         updateDescription(event, info);
         changed = true;
-    } else if(args.log_update) {
+        descChanged = true;
+    } else if(args.log_update === "all") {
+        log(1, "Changed update timestamp. Consider turning off" +
+                "log_update: \"all\" to save on API requests.");
         updateDescription(event, info);
+        descChanged = true;
     }
     if(!args.override_location && id[5] !== info.id[5])
     {
+        log(5, id[5]+"!=="+info.id[5] + 
+            "\nNew value: " + info.location, "Location changed");
         event.setLocation(indo.location);
         changed = true;
     }
 
     if(changed) {
-        log(5, info.uid, "Updated existing event");
+        if(args.log_update && !args.log_update) {
+            updateDescription(event, info);
+        }
+        var cookie = id_to_cookie(info.id);
+        log(5, "Updating existing event cookie: " + cookie);
         event.removeGuest(guest.getEmail());
-        event.addGuest(id_to_cookie(info.id));
+        event.addGuest(cookie);
     } else {
         log(5, info.uid, "No changes to existing event");
     }
@@ -455,6 +484,15 @@ function error(pNumber, pMessage){
   return tempError;
 }
 
+function clone(obj) {
+  var ret = {};
+  for(var k in obj) {
+      if(obj.hasOwnProperty(k)) {
+          ret[k] = obj[k];
+      }
+  }
+  return ret;
+}
 
 function default_value(arg_name, default_) {
     // sets args[arg_name] to default_ if left undefined by the user
