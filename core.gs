@@ -391,7 +391,7 @@ function updateDescription(event, info) {
 
 function updateEvent(event, info) {
     var guest = get_guest_cookie_from_cal(event);
-    var id = guest.getEmail().slice(0, -18);
+    var id = guest.getEmail().slice(0, -18).split('.');
 
     var changed = false;
     var descChanged = false;
