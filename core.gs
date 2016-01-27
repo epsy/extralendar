@@ -225,13 +225,18 @@ function parseTitle(title){
 
 function addComputedFields(info) {
     info.description_field = info.teacher;
-    info.title_field = info.title;
+    if(info.title.length > args.title_max_length) {
+        info.title_field = info.title.slice(0, args.title_max_length) + '\u2026';
+        info.description_field += "\n" + info.title;
+    } else {
+        info.title_field = info.title;
+    }
     if(args.override_location) {
         if(info.location !== undefined) {
             if(info.location.length < args.location_max_length) {
-                info.title_field = info.location + ' - ' + info.title;
+                info.title_field = info.location + ' - ' + info.title_field;
             } else {
-                info.title_field = '\u2026 - ' + info.title;
+                info.title_field = '\u2026 - ' + info.title_field;
                 info.description_field = info.location + '\n\n' +
                                          info.description_field;
             }
@@ -268,8 +273,15 @@ function toalphanum(s) {
 }
 
 function generate_id(info) {
-    title = toalphanum(info.title);
-    start = toalphanum(info.start_raw);
+    var title = toalphanum(info.title);
+    if(info.title.length > args.title_max_length) {
+        var checksum = 0;
+        for(var i = 0; i < info.title.length; i++) {
+            checksum += info.title.charCodeAt(i) + i;
+        }
+        title = title.slice(0, 10) + checksum;
+    }
+    var start = toalphanum(info.start_raw);
     return [
         title+start+args.invalidator, title, start,
         toalphanum(info.end_raw), toalphanum(info.teacher),
@@ -544,6 +556,7 @@ function checkArguments(){
 
   default_value('override_location', "");
   default_value('location_max_length', 15);
+  default_value('title_max_length', 55);
   return true;
 }
 
