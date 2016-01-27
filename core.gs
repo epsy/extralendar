@@ -550,7 +550,7 @@ function checkArguments(){
   default_value('sheet_id', '');
   default_value('log_update', false);
 
-  default_value('delete_unknown', true);
+  default_value('delete_unknown', false);
   default_value('magic_line', "\n\n----------------------\n");
   default_value('invalidator', "");
 
