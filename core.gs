@@ -93,7 +93,22 @@ function coreFunction(){
   });
 
   for(i in new_events){
-    createOrUpdateEvent(cal, new_events[i], classes);
+    try {
+        createOrUpdateEvent(cal, new_events[i], classes);
+    } catch(e) {
+        log( 1, e.stack, e );
+        var msg = e.message;
+        if(msg !== undefined) {
+            if(msg.indexOf('in a short time') !== -1) {
+                Utilities.sleep(1000);
+                try {
+                    createOrUpdateEvent(cal, new_events[i], classes);
+                } catch(e) {
+                    log( 1, e.stack, "Failed after retry: " + e.toString() );
+                }
+            }
+        }
+    }
   }
 
   doLogout();
