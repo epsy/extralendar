@@ -50,17 +50,17 @@ function coreFunction(){
   calendarInfo = JSON.parse(calendarInfo);
 
   log(5, "getting existing events");
-  var existing = cal.getEvents(dateNow, dateNext);
+  var existing_list = cal.getEvents(dateNow, dateNext);
   log(5, "gotten existing events");
-  var classes = {};
+  var existing_by_uid = {};
 
   var uid;
 
-  for(var i in existing){
-      var event = existing[i];
+  for(var i in existing_list){
+      var event = existing_list[i];
       uid = get_uid_from_cal(event);
       if(uid !== -1) {
-          classes[uid] = event;
+          existing_by_uid[uid] = event;
       }
       else if(args.delete_unknown) {
           log(5, "Deleting unmanaged event " + event.getTitle());
@@ -69,23 +69,23 @@ function coreFunction(){
   }
 
   var new_events = [];
-  var noLongerUsed = clone(existing);
+  var no_longer_used = clone(existing_by_uid);
 
   for(i in calendarInfo){
     try {
         var info = parseEvent(calendarInfo[i]);
         new_events.push(info);
-        delete noLongerUsed[info.uid];
+        delete no_longer_used[info.uid];
     } catch(e) {
         log( 1, e.stack, e );
     }
   }
 
-  for(i in noLongerUsed) {
+  for(i in no_longer_used) {
       new_events.push({
         deleteMe: true,
         uid: i,
-        start: noLongerUsed[i].getStartTime()
+        start: no_longer_used[i].getStartTime()
       });
   }
 
@@ -95,7 +95,7 @@ function coreFunction(){
 
   for(i in new_events){
     try {
-        createOrUpdateEvent(cal, new_events[i], classes);
+        createOrUpdateEvent(cal, new_events[i], existing_by_uid);
     } catch(e) {
         log( 1, e.stack, e );
         var msg = e.message;
@@ -103,7 +103,7 @@ function coreFunction(){
             if(msg.indexOf('in a short time') !== -1) {
                 Utilities.sleep(1000);
                 try {
-                    createOrUpdateEvent(cal, new_events[i], classes);
+                    createOrUpdateEvent(cal, new_events[i], existing_by_uid);
                 } catch(e) {
                     log( 1, e.stack, "Failed after retry: " + e.toString() );
                 }
