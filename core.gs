@@ -241,7 +241,9 @@ function addComputedFields(info) {
                                          info.description_field;
             }
         }
-        info.location = args.override_location;
+        info.location_field = args.override_location;
+    } else {
+        info.location_field = info.location;
     }
     if(args.log_update) {
         info.description_field += "\n\nUpdated at :\n" + new Date();
@@ -390,7 +392,7 @@ function createEvent(calendar, info) {
 
   var event = calendar.createEvent(info.title_field, info.start, info.end, {
     description: desc,
-    location: info.location,
+    location: info.location_field,
     guests: id_to_cookie(info.id)
   });
 }
@@ -439,8 +441,8 @@ function updateEvent(event, info) {
     if(!args.override_location && id[5] !== info.id[5])
     {
         log(5, id[5]+"!=="+info.id[5] + 
-            "\nNew value: " + info.location, "Location changed");
-        event.setLocation(indo.location);
+            "\nNew value: " + info.location_field, "Location changed");
+        event.setLocation(info.location_field);
         changed = true;
     }
 
